@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using System;
 using UnityEngine;
-class AttributeFactory
+public static class GetComponentInjection
 {
     public static InjectEvent<GetComponentAttribute, FieldInfo, MonoBehaviour> SingleObjectClassifier;
     public static InjectEvent<GetComponentAttribute, FieldInfo, MonoHolder<MonoBehaviour, MonoBehaviour[]>> MultipleObjectClassifier;
@@ -15,10 +15,10 @@ class AttributeFactory
             switch (attr.ComponentAddress)
             {
                 case GetComponentFrom.Self:
-                    field.SetValue(obj, obj.GetComponent(field.GetValue(obj).GetType()));
+                    field.SetValue(obj, obj.GetComponent(field.FieldType));
                     break;
                 case GetComponentFrom.SceneObject:
-                    field.SetValue(obj, MonoBehaviour.FindObjectOfType(field.GetValue(obj).GetType()));
+                    field.SetValue(obj, MonoBehaviour.FindObjectOfType(field.FieldType));
                     break;
             }
         };
@@ -45,12 +45,13 @@ class AttributeFactory
         foreach (var obj in objs)
         {
             Type type = obj.GetType();
-            FieldInfo[] fields = type.GetFields();
+            FieldInfo[] fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            GetComponentAttribute attr;
             foreach (var field in fields)
             {
-                var attr = field.GetCustomAttribute<GetComponentAttribute>();
-                if (attr != null)
+                if (field.IsDefined(typeof(GetComponentAttribute), false))
                 {
+                    attr = field.GetCustomAttribute<GetComponentAttribute>();
                     SingleObjectClassifier?.Invoke(attr, field, obj);
                     MultipleObjectClassifier?.Invoke(attr, field, new MonoHolder<MonoBehaviour, MonoBehaviour[]>(obj, objs));
                 }
